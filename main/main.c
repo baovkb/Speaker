@@ -1,6 +1,5 @@
 #include <stdio.h>
 #include <stdbool.h>
-#include "Wifi.h"
 #include "nvs_flash.h"
 #include "esp_websocket_client.h"
 #include <cJSON.h>
@@ -14,12 +13,17 @@
 #include <time.h>
 
 #include "DFRobotDFPlayerMini.h"
+#include "Wifi.h"
 
 static char *TAG = "main";
 
-#define PP 15 // Play/Pause
-#define Next 14
-#define Previous 5
+#define Previous 38    // Play/Pause
+#define PP 2
+#define Next 36
+
+int test = -1; 
+int mm = 0,ss = 0;
+bool dem = false;
 
 bool isPlaying = false;
 bool isRepeat = false;
@@ -27,7 +31,7 @@ bool isShuffle = false;
 
 uint8_t buttonPP_previous = 0;
 uint8_t buttonNext_previous = 0;
-uint8_t buttonPrevious_previous = 0;
+uint8_t buttonPrevious_previous = 1;
 
 uint8_t curAudioId = 0;
 char **audio;
@@ -50,40 +54,59 @@ void handleAction(char *action, uint64_t timeStamp);
 static void periodic_timer_callback(void* arg);
 void checkStateTask();
 void ButtonOccur();
+void PrintOLED();
+void CheckStateButton();
 void generateAudioName();
+
+void ConfigOLED();
+void StateAudio();
 
 void app_main(void)
 {
-    gpio_set_direction(PP,GPIO_MODE_INPUT);
-	gpio_set_direction(Next,GPIO_MODE_INPUT);
+    //Config button
+    // Input
+    gpio_set_direction(Next,GPIO_MODE_INPUT);
+	gpio_set_direction(PP,GPIO_MODE_INPUT);
 	gpio_set_direction(Previous,GPIO_MODE_INPUT);
 
+    // Set input pullup
+    gpio_set_pull_mode(Next, GPIO_PULLUP_ONLY);
+    gpio_set_pull_mode(PP, GPIO_PULLUP_ONLY);
+    gpio_set_pull_mode(Previous, GPIO_PULLUP_ONLY);
+    //-------------------------------------    
+
+    //Check UART DF
+    vTaskDelay(500/ portTICK_PERIOD_MS);
     while(1) {
-		bool ret = DF_begin(CONFIG_TX_GPIO, CONFIG_RX_GPIO, true);
+		bool ret = DF_begin(17, 18, true); //TX: 17, RX: 18
+        vTaskDelay(500/ portTICK_PERIOD_MS);
 		ESP_LOGI(TAG, "DF_begin=%d", ret);
 		if (ret) break;
-		vTaskDelay(200);
+		vTaskDelay(200/ portTICK_PERIOD_MS);
 	}
+    // Check done ----------------------------------------
 
-    generateAudioName();
+    //Config DFP
+    vTaskDelay(300/ portTICK_PERIOD_MS);
+	DF_volume(30); //Set volume value. From 0 to 30
+
+    vTaskDelay(100/ portTICK_PERIOD_MS);
+    DF_EQ(DFPLAYER_EQ_POP);
+
+    vTaskDelay(1000/ portTICK_PERIOD_MS);
     ESP_LOGI(TAG, "DFPlayer Mini online.");
-	ESP_LOGI(TAG, "Play first track on 01 folder.");
-	DF_volume(10); //Set volume value. From 0 to 30
+    generateAudioName();
 
-    vTaskDelay(100);
-   
-    srand(time(NULL));
+    vTaskDelay(100/ portTICK_PERIOD_MS);
+    //------------------------------------
 
-    const char *ssid = "TrieuDuong";
-    const char *password = "25102017";
-    const char *gateway = "ws://192.168.31.39:8080";
-
-    esp_err_t ret = nvs_flash_init();
-    if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
-      ESP_ERROR_CHECK(nvs_flash_erase());
-      ret = nvs_flash_init();
+    esp_err_t err = nvs_flash_init();
+    if (err == ESP_ERR_NVS_NO_FREE_PAGES || err == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+        ESP_ERROR_CHECK(nvs_flash_erase());
+        err = nvs_flash_init();
     }
-    ESP_ERROR_CHECK(ret);
+    ESP_ERROR_CHECK( err );
+    ESP_ERROR_CHECK(esp_netif_init());
 
     //timer config
     const esp_timer_create_args_t periodic_timer_args = {
@@ -98,10 +121,37 @@ void app_main(void)
     //require event loop to check wifi and websocket event
     ESP_ERROR_CHECK(esp_event_loop_create_default());
     
-    connectWifi(ssid, password);
+    //Start websocket
+    const char *gateway = "ws://nhacnkd.online:8080";
+    initialise_wifi();
+    vTaskDelay(5000/ portTICK_PERIOD_MS);
     websocket_app_start(gateway);\
+    xTaskCreate(ButtonOccur, "Xu_ly_nut_nhan",4096, NULL, 1, NULL);
     xTaskCreate(checkStateTask, "checkStateTask", 2048, NULL, 1, NULL);
-    xTaskCreate(ButtonOccur, "Xu_ly_nut_nhan",2048, NULL, 1, NULL);
+    
+}
+
+void generateAudioName() {
+    vTaskDelay(200 / portTICK_PERIOD_MS);
+    lengthAudio = DF_readFileCounts(DFPLAYER_DEVICE_SD);
+    
+	ESP_LOGI(TAG, "Num audio file: %d", lengthAudio);
+
+    audio = (char**)malloc(lengthAudio * sizeof(char*));
+    if (audio) {
+        for (uint8_t i = 0; i < lengthAudio; ++i) {
+            audio[i] = (char *)malloc(4 * sizeof(char));
+            if (!audio[i]) {
+                ESP_LOGI(TAG, "Allocate mem for audio is fail");
+                exit(1);
+            }
+
+            snprintf((char *)audio[i], 4, "%03d", i + 1);
+        }
+    } else {
+        ESP_LOGI(TAG, "Allocate mem for audio is fail");
+        exit(1);
+    }
 }
 
 void websocket_app_start(const char *gateway) {
@@ -202,7 +252,6 @@ static void periodic_timer_callback(void* arg)
 }
 
 void handleAction(char *action, uint64_t timeStamp) {
-    // ESP_LOGI(TAG, "action: %s", action);
 
     if (strstr(action, "timer")) {
         uint64_t timerVal;
@@ -220,7 +269,6 @@ void handleAction(char *action, uint64_t timeStamp) {
                 isTimerRunning = true;
                 ESP_ERROR_CHECK(esp_timer_start_periodic(periodic_timer, 1000000));
             }
-            //ESP_ERROR_CHECK(esp_timer_restart(periodic_timer, 1000000));
         } 
         
     } else if (strstr(action, "play")) {
@@ -229,12 +277,15 @@ void handleAction(char *action, uint64_t timeStamp) {
 
         if (playId == curAudioId) {
             isPlaying = true;
+            vTaskDelay(100 / portTICK_PERIOD_MS);
             DF_start();
+
         } else if (playId >= 0 && playId < lengthAudio) {
             curAudioId = (uint8_t)playId;
             //play audio
             isPlaying = true;
             DF_play(curAudioId+1);
+
         } else {
             return;
         }
@@ -250,6 +301,7 @@ void handleAction(char *action, uint64_t timeStamp) {
         DF_play(curAudioId+1);
         //update state var
         isPlaying = true;
+
     } else if (!strcmp(action, "previous")) {
         curAudioId = curAudioId-1 < 0 ? lengthAudio-1 : curAudioId-1;
         //pre audio
@@ -257,6 +309,7 @@ void handleAction(char *action, uint64_t timeStamp) {
 
         //update state var
         isPlaying = true;
+
     } else if (!strcmp(action, "repeat")) {
         //update state var
         isRepeat = true;
@@ -280,26 +333,7 @@ void handleAction(char *action, uint64_t timeStamp) {
     sendRequest(action, true);
 }
 
-void generateAudioName() {
-    lengthAudio = DF_readFileCounts(DFPLAYER_DEVICE_SD);
-	ESP_LOGI(TAG, "Num audio file: %d", lengthAudio);
 
-    audio = (char**)malloc(lengthAudio * sizeof(char*));
-    if (audio) {
-        for (uint8_t i = 0; i < lengthAudio; ++i) {
-            audio[i] = (char *)malloc(4 * sizeof(char));
-            if (!audio[i]) {
-                ESP_LOGI(TAG, "Allocate mem for audio is fail");
-                exit(1);
-            }
-
-            snprintf((char *)audio[i], 4, "%03d", i + 1);
-        }
-    } else {
-        ESP_LOGI(TAG, "Allocate mem for audio is fail");
-        exit(1);
-    }
-}
 
 void checkStateTask() {
     while(1) {
@@ -307,6 +341,7 @@ void checkStateTask() {
             ESP_LOGI(TAG, "counter: %d", counter);
             if (counter >= counterLim) {
                 ESP_ERROR_CHECK(esp_timer_stop(periodic_timer));
+                vTaskDelay(3000/portTICK_PERIOD_MS);
                 counter = 0;
                 counterLim = 0;
                 isTimerRunning = false;
@@ -323,10 +358,11 @@ void checkStateTask() {
 			uint8_t type = DF_readType();
 			if (type == DFPlayerPlayFinished) {
 				ESP_LOGI(TAG, "DF play finished");
+
                 if (isRepeat) {
                     isPlaying = true;
                     DF_play(curAudioId+1);
-                    
+
                 } else if (isShuffle) {
                     uint8_t id_rand;
                     do {

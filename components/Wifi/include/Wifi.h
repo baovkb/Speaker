@@ -14,7 +14,10 @@
 #include "lwip/err.h"
 #include "lwip/sys.h"
 
-#define WIFI_CONNECTED_BIT BIT0
-#define WIFI_FAIL_BIT      BIT1
+#include "esp_netif.h"
+#include "esp_smartconfig.h"
 
-void connectWifi(char *ssid, char *password);
+static const int CONNECTED_BIT = BIT0;
+static const int ESPTOUCH_DONE_BIT = BIT1;
+
+void initialise_wifi();
