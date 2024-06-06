@@ -49,7 +49,7 @@ bool isTimerRunning = false;
 
 void websocket_event_handler(void *handler_args, esp_event_base_t base, int32_t event_id, void *event_data);
 void websocket_app_start();
-cJSON *payload(char *action, bool all);
+char* payload(char *action, bool all);
 void sendRequest(char *action, bool all);
 void handleAction(char *action, uint64_t timeStamp);
 static void periodic_timer_callback(void* arg);
@@ -218,7 +218,7 @@ void websocket_event_handler(void *handler_args, esp_event_base_t base, int32_t 
     }
 }
 
-cJSON *payload(char *action, bool all) {
+char* payload(char *action, bool all) {
     cJSON *json, *data, *audioArr;
     json = cJSON_CreateObject();
     data = cJSON_CreateObject();
@@ -457,7 +457,7 @@ void ButtonOccur(){
 
         if (isBtnOccur) {
             isBtnOccur = false;
-            sendRequest("audio", true);
+            sendRequest("update", true);
         }
     }
 
