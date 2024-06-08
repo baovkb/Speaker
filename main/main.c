@@ -11,7 +11,6 @@
 #include "driver/gpio.h"
 #include <inttypes.h>
 #include <time.h>
-
 #include "DFRobotDFPlayerMini.h"
 #include "Wifi.h"
 
@@ -90,7 +89,7 @@ void app_main(void)
 	DF_volume(30); //Set volume value. From 0 to 30
 
     vTaskDelay(100/ portTICK_PERIOD_MS);
-    // srand(time(NULL));
+    srand(time(NULL));
     //------------------------------------
 
     esp_err_t err = nvs_flash_init();
@@ -331,8 +330,6 @@ void handleAction(char *action, uint64_t timeStamp) {
     sendRequest(action, true);
 }
 
-
-
 void checkStateTask() {
     while(1) {
         if (xSemaphoreTake(timerSemaphore, 0) == pdTRUE) {
@@ -347,7 +344,7 @@ void checkStateTask() {
                 //pause audio
                 isPlaying = false;
                 DF_pause();
-                sendRequest("audio", true);
+                sendRequest("update", true);
             }
         }
 
@@ -375,7 +372,7 @@ void checkStateTask() {
                     isPlaying = false;
                 }
                 
-                sendRequest("audio", true);
+                sendRequest("update", true);
 			}
 		 }
     }
@@ -447,7 +444,7 @@ void ButtonOccur(){
 
         if (isBtnOccur) {
             isBtnOccur = false;
-            sendRequest("audio", true);
+            sendRequest("update", true);
         }
 
     }
