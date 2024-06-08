@@ -11,6 +11,7 @@
 #include "driver/gpio.h"
 #include <inttypes.h>
 #include <time.h>
+
 #include "DFRobotDFPlayerMini.h"
 #include "Wifi.h"
 
@@ -20,10 +21,6 @@ static char *TAG = "main";
 #define PP 2
 #define Next 36
 #define BLINK_GPIO 15
-
-int test = -1; 
-int mm = 0,ss = 0;
-bool dem = false;
 
 bool isPlaying = false;
 bool isRepeat = false;
@@ -47,6 +44,7 @@ SemaphoreHandle_t timerSemaphore;
 portMUX_TYPE timerMux = portMUX_INITIALIZER_UNLOCKED;
 bool isTimerRunning = false;
 
+void generateAudioName();
 void websocket_event_handler(void *handler_args, esp_event_base_t base, int32_t event_id, void *event_data);
 void websocket_app_start();
 char* payload(char *action, bool all);
@@ -55,7 +53,6 @@ void handleAction(char *action, uint64_t timeStamp);
 static void periodic_timer_callback(void* arg);
 void checkStateTask();
 void ButtonOccur();
-void generateAudioName();
 
 void app_main(void)
 {
@@ -75,10 +72,12 @@ void app_main(void)
     //Check UART DF
     vTaskDelay(500/ portTICK_PERIOD_MS);
     while(1) {
-		bool ret = DF_begin(17, 18, true); //TX: 17, RX: 18
+		bool ret = DF_begin(13, 12, true); //TX: 17, RX: 18
         vTaskDelay(500/ portTICK_PERIOD_MS);
 		ESP_LOGI(TAG, "DF_begin=%d", ret);
-		if (ret) break;
+		if (ret) {
+            break;
+        }
 		vTaskDelay(200/ portTICK_PERIOD_MS);
 	}
     // Check done ----------------------------------------
@@ -91,9 +90,7 @@ void app_main(void)
 	DF_volume(30); //Set volume value. From 0 to 30
 
     vTaskDelay(100/ portTICK_PERIOD_MS);
-    DF_EQ(DFPLAYER_EQ_POP);
-
-    vTaskDelay(100/ portTICK_PERIOD_MS);
+    // srand(time(NULL));
     //------------------------------------
 
     esp_err_t err = nvs_flash_init();
@@ -120,30 +117,20 @@ void app_main(void)
     //Start websocket
     const char *gateway = "ws://nhacnkd.online:8080";
     initialise_wifi();
-    vTaskDelay(2000/ portTICK_PERIOD_MS);
+    
+    vTaskDelay(2000 / portTICK_PERIOD_MS);
+    
     websocket_app_start(gateway);\
     xTaskCreate(ButtonOccur, "Xu_ly_nut_nhan",4096, NULL, 1, NULL);
     xTaskCreate(checkStateTask, "checkStateTask", 2048, NULL, 1, NULL);
-    
+      
 }
 
 void generateAudioName() {
     vTaskDelay(200 / portTICK_PERIOD_MS);
-    lengthAudio = 255;
-    DF_play(lengthAudio);
+    lengthAudio = DF_readFileCounts(DFPLAYER_DEVICE_SD);
 
     vTaskDelay(200 / portTICK_PERIOD_MS);
-        int x = DF_readCurrentFileNumber(DFPLAYER_DEVICE_SD);
-        if(x!= -1){
-            lengthAudio = x; //Lay lai bai hat
-        }
-
-        //----------------------------------
-        vTaskDelay(200 / portTICK_PERIOD_MS);
-        DF_play(0);
-        isPlaying = true;
-        isBtnOccur = true;
-        //--------------------------
         
     vTaskDelay(100 / portTICK_PERIOD_MS);
 	ESP_LOGI(TAG, "Num audio file: %d", lengthAudio);
@@ -397,6 +384,7 @@ void checkStateTask() {
 }
 
 void ButtonOccur(){
+
     while(1) {
         //Next button
         uint8_t buttonNext_current = gpio_get_level(Next);
@@ -453,12 +441,15 @@ void ButtonOccur(){
 		}
 		buttonPrevious_previous = buttonPrevious_current;
 
-        gpio_set_level (BLINK_GPIO, (isPlaying)? 1:0);
+        // int x = DF_readCurrentFileNumber(DFPLAYER_DEVICE_SD);
+
+        // gpio_set_level (BLINK_GPIO, (x != -1)? 1:0);
 
         if (isBtnOccur) {
             isBtnOccur = false;
-            sendRequest("update", true);
+            sendRequest("audio", true);
         }
+
     }
 
     vTaskDelete( NULL );
