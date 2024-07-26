@@ -10,6 +10,7 @@ Speaker IoT là một project giúp bạn có thể điều khiển một chiế
     + Phát/Tạm dừng
     + Phát bài kế tiếp
     + Phát bài trước đó
+    + Phát bài bất kỳ trong danh sách 
     + Chế độ phát lặp lại, phát ngẫu nhiên
     + Chế độ hẹn giờ tắt nhạc
 
