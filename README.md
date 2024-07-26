@@ -36,12 +36,12 @@ Làm theo hướng dẫn tại [đây](https://github.com/baovkb/Speaker_server)
 
 2. **Cấu hình**
 
-Sử dụng Smart Config để cấu hình ssid, password wifi từ xa. Tải app và hướng dẫn có tại [đây](https://github.com/espressif/esp-idf/tree/v5.3/examples/wifi/smart_config)
-
 Trong [main.c](main/main.c) tìm biến gateway, đây là gateway kết nối websocket của server, chỉnh sửa lại cho đúng server của bạn.
 Sau đó nạp code tùy theo từng IDE sử dụng
 
-**Lưu ý**: Các file trong thẻ nhớ không sử dụng tiếng việt và kí tự đặc biệt và không để trong bất kỳ thư mục nào
+Sử dụng Smart Config để cấu hình ssid, password wifi từ xa. Tải app và hướng dẫn có tại [đây](https://github.com/espressif/esp-idf/tree/v5.3/examples/wifi/smart_config)
+
+**Lưu ý**: Các file trong thẻ nhớ không sử dụng tiếng việt, kí tự đặc biệt và không được để trong bất kỳ thư mục nào
 
 <h3> Nhóm thực hiện </h3>
 
