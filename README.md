@@ -3,6 +3,7 @@
 Speaker IoT là một project giúp bạn có thể điều khiển một chiếc loa trực tiếp bằng nút bấm vật lý trên loa hoặc điều khiển từ xa thông qua một web app. Cung cấp thêm một tùy chọn điều khiển khi bạn không ở gần loa mà vẫn muốn điều khiển nó.
 
 <h3> Chức năng </h3>
+
 - Các nút bấm vật lý trên loa điều khiển bao gồm: Phát bài kế tiếp, phát bài trước đó, Phát/Tạm dừng
 
 - Điều khiển thông qua web app:
@@ -20,9 +21,12 @@ Speaker IoT là một project giúp bạn có thể điều khiển một chiế
 
 <h3> Các cài đặt và sử dụng</h3>
 <h4> Cài đặt web app </h4>
+
 Làm theo hướng dẫn tại ![đây](https://github.com/baovkb/Speaker_server)
+
 <h4> Nạp code cho vi điều khiển </h4>
 1. **Clone project***
+
 ```git clone https://github.com/baovkb/Speaker```
 2. **Cấu hình**
 Sử dụng Smart Config để cấu hình ssid, password wifi từ xa. Tải app và hướng dẫn có tại ![đây](https://github.com/espressif/esp-idf/tree/v5.3/examples/wifi/smart_config)
